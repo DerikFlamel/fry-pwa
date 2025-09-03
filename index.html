@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#FF7A00" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>FRZ</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='512' height='512'%3E%3Crect width='512' height='512' fill='%23FF7A00'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-size='220' font-family='Arial' font-weight='700' fill='black'%3EFRZ%3C/text%3E%3C/svg%3E" />
+  <style>
+    :root { --orange: #FF7A00; --black: #000000; --darkgray:#666666; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #ffffff; color: var(--black); }
+    .topbar { background: var(--orange); color: var(--black); padding: 16px; text-align: center; font-weight: 700; font-size: 26px; }
+    .container { padding: 16px; max-width: 720px; margin: 0 auto; }
+    .screen { display: none; min-height: calc(100dvh - 120px); }
+    .screen.active { display: block; }
+    .btn { width: 100%; background: var(--orange); color: var(--black); border: none; padding: 16px; border-radius: 8px; font-size: 22px; font-weight: 700; text-align:center; cursor: pointer; }
+    .btn:disabled { opacity: .6; cursor: not-allowed; }
+    .footer { text-align:center; color: var(--darkgray); padding: 12px 0 24px; font-size: 14px; }
+    label { display:block; margin: 14px 0 6px; font-weight: 700; color: var(--black); }
+    input[type="text"], input[type="number"], textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; color: var(--black); background: #fff; }
+    .card { border: 1px solid #eee; border-radius: 12px; padding: 12px; }
+    .center { display: flex; align-items: center; justify-content: center; }
+    .spacer { height: 16px; }
+    .geo { margin-top:8px; font-size:14px; color: var(--black); }
+    .pending { background:#fff7e6; border:1px dashed var(--orange); padding:8px 12px; border-radius:8px; margin:8px 0; color: var(--black); }
+    .thumb { max-width: 100%; border-radius: 10px; border:1px solid #eee; }
+  </style>
+</head>
+<body>
+  <!-- HOME -->
+  <div id="home" class="screen active">
+    <div class="topbar">FRZ</div>
+    <div class="container center" style="min-height:60dvh;">
+      <button id="btnGoInicio" class="btn" aria-label="Ir para Início">Início</button>
+    </div>
+    <div class="container">
+      <div id="pendingInfo" class="pending" style="display:none;"></div>
+    </div>
+    <div class="footer">Beta 0.01.003</div>
+  </div>
+
+  <!-- INÍCIO -->
+  <div id="inicio" class="screen">
+    <div class="topbar">FRZ</div>
+    <div class="container">
+      <div class="card">
+        <label>Manifesto</label>
+        <input id="manifesto" type="text" inputmode="text" />
+        <label>Placa</label>
+        <input id="placa" type="text" inputmode="text" />
+        <label>Quantidade de Entregas</label>
+        <input id="qtdEntregas" type="number" inputmode="numeric" />
+        <label>Quantidade de Cidades</label>
+        <input id="qtdCidades" type="number" inputmode="numeric" />
+        <label>3 Cidades Mais Distantes</label>
+        <textarea id="cidadesDistantes" rows="2"></textarea>
+        <label>Km Inicial</label>
+        <input id="kmInicial" type="number" step="0.1" inputmode="decimal" />
+        <label>Foto do Odômetro (Início)</label>
+        <input id="fotoInicio" type="file" accept="image/*;capture=camera" />
+        <img id="thumbInicio" class="thumb" alt="Prévia da foto do odômetro (início)" style="display:none;" />
+        <div id="geoInicio" class="geo"></div>
+      </div>
+      <div class="spacer"></div>
+      <button id="btnEnviarInicio" class="btn">Enviar</button>
+    </div>
+    <div class="footer">Beta 0.01.003</div>
+  </div>
+
+  <!-- MIDDLE -->
+  <div id="middle" class="screen">
+    <div class="topbar">FRZ</div>
+    <div class="container center" style="min-height:60dvh;">
+      <button id="btnGoFim" class="btn">Fim</button>
+    </div>
+    <div class="footer">Beta 0.01.003</div>
+  </div>
+
+  <!-- FIM -->
+  <div id="fim" class="screen">
+    <div class="topbar">FRZ</div>
+    <div class="container">
+      <div class="card">
+        <label>Quantidade de Devoluções</label>
+        <input id="qtdDevolucoes" type="number" inputmode="numeric" />
+        <label>Km Final</label>
+        <input id="kmFinal" type="number" step="0.1" inputmode="decimal" />
+        <label>Foto do Odômetro (Fim)</label>
+        <input id="fotoFim" type="file" accept="image/*;capture=camera" />
+        <img id="thumbFim" class="thumb" alt="Prévia da foto do odômetro (fim)" style="display:none;" />
+        <div id="geoFim" class="geo"></div>
+      </div>
+      <div class="spacer"></div>
+      <button id="btnFinalEnviar" class="btn">Enviar</button>
+    </div>
+    <div class="footer">Beta 0.01.003</div>
+  </div>
+
+  <script>
+    const GETFORM_ENDPOINT = 'https://getform.io/f/bdrddlgb';
+
+    // App State in localStorage (text) and photo dataURLs
+    const SKEY = 'frz_state_v1';
+    const OUTBOX = 'frz_outbox_v1';
+    const state = loadState();
+
+    const screens = {
+      home: document.getElementById('home'),
+      inicio: document.getElementById('inicio'),
+      middle: document.getElementById('middle'),
+      fim: document.getElementById('fim'),
+    };
+
+    function saveState() { localStorage.setItem(SKEY, JSON.stringify(state)); }
+    function loadState() {
+      try { return JSON.parse(localStorage.getItem(SKEY)) || { ciclo: {}, inicio: {}, fim: {}, version: '0.01.003' }; }
+      catch(e){ return { ciclo: {}, inicio: {}, fim: {}, version: '0.01.003' }; }
+    }
+
+    function show(id){ Object.values(screens).forEach(s=>s.classList.remove('active')); screens[id].classList.add('active'); updatePendingInfo(); }
+
+    // Elements
+    const el = (id)=>document.getElementById(id);
+
+    // HOME
+    const btnGoInicio = el('btnGoInicio');
+    btnGoInicio.onclick = ()=>{ 
+      state.ciclo.startedAt = Date.now(); 
+      saveState(); 
+      show('inicio'); 
+    };
+
+    function updatePendingInfo(){
+      const box = el('pendingInfo');
+      const out = JSON.parse(localStorage.getItem(OUTBOX) || '[]');
+      if(out.length){
+        box.style.display='block';
+        box.innerHTML = `Há <b>${out.length}</b> envio(s) pendente(s). <button class="btn" style="margin-top:8px;" onclick="resendOutbox()">Enviar agora</button>`;
+        // Block starting a new cycle until previous submission is sent
+        btnGoInicio.disabled = true;
+      } else {
+        box.style.display='none';
+        btnGoInicio.disabled = false;
+      }
+    }
+
+    // INÍCIO handlers
+    const inicioFields = ['manifesto','placa','qtdEntregas','qtdCidades','cidadesDistantes','kmInicial'];
+    inicioFields.forEach(k=>{
+      const input = el(k); input.value = state.inicio[k] || ''; input.addEventListener('input', ()=>{ state.inicio[k] = input.value; saveState(); });
+    });
+
+    el('fotoInicio').addEventListener('change', async (e)=>{
+      const file = e.target.files[0]; if(!file) return;
+      const dataUrl = await compressImageToDataURL(file, 0.8, 1600);
+      state.inicio.fotoDataUrl = dataUrl; saveState();
+      el('thumbInicio').src = dataUrl; el('thumbInicio').style.display='block';
+      await captureGeo('inicio');
+    });
+
+    el('btnEnviarInicio').onclick = ()=>{ show('middle'); };
+
+    // MIDDLE
+    el('btnGoFim').onclick = ()=>{ show('fim'); };
+
+    // FIM handlers
+    const fimFields = ['qtdDevolucoes','kmFinal'];
+    fimFields.forEach(k=>{
+      const input = el(k); input.value = state.fim[k] || ''; input.addEventListener('input', ()=>{ state.fim[k] = input.value; saveState(); });
+    });
+
+    el('fotoFim').addEventListener('change', async (e)=>{
+      const file = e.target.files[0]; if(!file) return;
+      const dataUrl = await compressImageToDataURL(file, 0.8, 1600);
+      state.fim.fotoDataUrl = dataUrl; saveState();
+      el('thumbFim').src = dataUrl; el('thumbFim').style.display='block';
+      await captureGeo('fim');
+    });
+
+    el('btnFinalEnviar').onclick = ()=>{ submitCycle(); };
+
+    // Utilities
+    async function captureGeo(section){
+      const geoEl = section==='inicio'? el('geoInicio') : el('geoFim');
+      geoEl.textContent = 'Obtendo localização…';
+      const pos = await getCurrentPosition().catch(()=>null);
+      if(!pos){ geoEl.textContent = 'Localização indisponível'; return; }
+      const coords = { lat: round(pos.coords.latitude), lon: round(pos.coords.longitude), acc: Math.round(pos.coords.accuracy||0) };
+      const rev = await reverseGeocode(coords.lat, coords.lon).catch(()=>null);
+      const label = rev ? `Cidade: ${rev.city||rev.town||rev.village||'—'} · UF: ${rev.state_code||rev.state||'—'} · CEP: ${rev.postcode||'—'} · Lat: ${coords.lat} · Lon: ${coords.lon}` : `Lat: ${coords.lat} · Lon: ${coords.lon} · Precisão ±${coords.acc}m`;
+      geoEl.innerHTML = label;
+      state[section].geo = { ...coords, ...(rev||{}) }; saveState();
+    }
+
+    function getCurrentPosition(){
+      return new Promise((resolve,reject)=>{
+        if(!navigator.geolocation) return reject(new Error('Geolocalização indisponível'));
+        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+      });
+    }
+
+    async function reverseGeocode(lat, lon){
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=pt-BR`;
+      const r = await fetch(url, { headers: { 'Accept':'application/json' } });
+      if(!r.ok) throw new Error('reverse geocode fail');
+      const j = await r.json();
+      const a = j.address || {};
+      const ufCode = a['ISO3166-2-lvl4']?.split('-')[1] || null;
+      return { city: a.city || a.town || a.village || a.municipality, state: a.state, state_code: ufCode, postcode: a.postcode };
+    }
+
+    function round(n){ return Math.round(n*100000)/100000; }
+
+    function dataURLToBlob(dataURL){
+      const arr = dataURL.split(','), mime = arr[0].match(/:(.*?);/)[1];
+      const bstr = atob(arr[1]); let n = bstr.length; const u8arr = new Uint8Array(n);
+      while(n--) u8arr[n] = bstr.charCodeAt(n);
+      return new Blob([u8arr], {type:mime});
+    }
+
+    function compressImageToDataURL(file, quality=0.8, maxW=1600){
+      return new Promise((resolve,reject)=>{
+        const reader = new FileReader();
+        reader.onload = ()=>{
+          const img = new Image();
+          img.onload = ()=>{
+            const scale = Math.min(1, maxW / img.width);
+            const w = Math.round(img.width * scale);
+            const h = Math.round(img.height * scale);
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            const dataUrl = canvas.toDataURL('image/jpeg', quality);
+            resolve(dataUrl);
+          };
+          img.onerror = reject;
+          img.src = reader.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function submitCycle(){
+      // Prepare payload
+      const payload = {
+        manifesto: (state.inicio.manifesto||'').trim(),
+        placa: (state.inicio.placa||'').trim(),
+        qtdEntregas: (state.inicio.qtdEntregas||'').toString(),
+        qtdCidades: (state.inicio.qtdCidades||'').toString(),
+        cidadesDistantes: (state.inicio.cidadesDistantes||'').trim(),
+        kmInicial: (state.inicio.kmInicial||'').toString(),
+        inicioGeo: JSON.stringify(state.inicio.geo||{}),
+        qtdDevolucoes: (state.fim.qtdDevolucoes||'').toString(),
+        kmFinal: (state.fim.kmFinal||'').toString(),
+        fimGeo: JSON.stringify(state.fim.geo||{}),
+        startedAt: state.ciclo.startedAt || Date.now(),
+        finishedAt: Date.now(),
+        userAgent: navigator.userAgent
+      };
+
+      const form = new FormData();
+      for(const [k,v] of Object.entries(payload)) form.append(k, v);
+
+      if(state.inicio.fotoDataUrl){
+        form.append('fotoInicio', dataURLToBlob(state.inicio.fotoDataUrl), `odometro_inicio_${Date.now()}.jpg`);
+      }
+      if(state.fim.fotoDataUrl){
+        form.append('fotoFim', dataURLToBlob(state.fim.fotoDataUrl), `odometro_fim_${Date.now()}.jpg`);
+      }
+
+      // Try immediate send; if fails, queue and block new cycles
+      try {
+        if(!GETFORM_ENDPOINT || GETFORM_ENDPOINT.startsWith('REPLACE_ME')) throw new Error('Endpoint não configurado');
+        const res = await fetch(GETFORM_ENDPOINT, { method: 'POST', body: form });
+        if(!res.ok) throw new Error('Falha no envio');
+        // Success → clear cycle state
+        state.inicio = {}; state.fim = {}; state.ciclo = {}; saveState();
+        alert('Enviado com sucesso! Você voltará à tela inicial.');
+        show('home');
+        updatePendingInfo();
+      } catch (err) {
+        // Queue in outbox and **block** starting a new cycle
+        const out = JSON.parse(localStorage.getItem(OUTBOX) || '[]');
+        out.push({ payload, inicioFoto: state.inicio.fotoDataUrl||null, fimFoto: state.fim.fotoDataUrl||null });
+        localStorage.setItem(OUTBOX, JSON.stringify(out));
+        // Keep local state so user can’t start a new cycle until resend
+        state.inicio = {}; state.fim = {}; state.ciclo = {}; saveState();
+        alert('Sem conexão ou servidor indisponível. Seus dados foram guardados no aparelho. No início, toque em "Enviar agora" quando tiver internet.');
+        show('home');
+        updatePendingInfo(); // this disables the Início button until sent
+      }
+    }
+
+    async function resendOutbox(){
+      const out = JSON.parse(localStorage.getItem(OUTBOX) || '[]');
+      if(!out.length){ updatePendingInfo(); return; }
+
+      for(let i=0;i<out.length;i++){
+        const item = out[i];
+        const form = new FormData();
+        for(const [k,v] of Object.entries(item.payload)) form.append(k, v);
+        if(item.inicioFoto) form.append('fotoInicio', dataURLToBlob(item.inicioFoto), `odometro_inicio_${Date.now()}_${i}.jpg`);
+        if(item.fimFoto) form.append('fotoFim', dataURLToBlob(item.fimFoto), `odometro_fim_${Date.now()}_${i}.jpg`);
+        try {
+          const res = await fetch(GETFORM_ENDPOINT, { method:'POST', body: form });
+          if(!res.ok) throw new Error('fail');
+          out.splice(i,1); i--; // remove and step back
+          localStorage.setItem(OUTBOX, JSON.stringify(out));
+        } catch(e){ break; }
+      }
+      updatePendingInfo();
+      if(!JSON.parse(localStorage.getItem(OUTBOX)||'[]').length) alert('Todos os envios pendentes foram concluídos.');
+    }
+
+    // Restore previews if any
+    window.addEventListener('load', ()=>{
+      if(state.inicio.fotoDataUrl){ el('thumbInicio').src = state.inicio.fotoDataUrl; el('thumbInicio').style.display='block'; }
+      if(state.fim.fotoDataUrl){ el('thumbFim').src = state.fim.fotoDataUrl; el('thumbFim').style.display='block'; }
+      if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js'); }
+      updatePendingInfo();
+    });
+  </script>
+</body>
+</html>
