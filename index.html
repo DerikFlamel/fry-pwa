@@ -40,7 +40,7 @@
     <div class="container">
       <div id="pendingInfo" class="pending" style="display:none;"></div>
     </div>
-    <div class="footer">KIT 0.01.005</div>
+    <div class="footer">KIT 0.01.007</div>
   </div>
 
   <!-- INÍCIO -->
@@ -66,7 +66,7 @@
         <div id="geoInicio" class="geo"></div>
       </div>
       <div class="spacer"></div>
-      <button id="btnEnviarInicio" class="btn" disabled>Enviar</button>
+      <button id="btnEnviarInicio" class="btn">Enviar</button>
     </div>
     <div class="footer">Beta 0.01.003</div>
   </div>
@@ -95,7 +95,7 @@
         <div id="geoFim" class="geo"></div>
       </div>
       <div class="spacer"></div>
-      <button id="btnFinalEnviar" class="btn" disabled>Enviar</button>
+      <button id="btnFinalEnviar" class="btn">Enviar</button>
     </div>
     <div class="footer">Beta 0.01.003</div>
   </div>
@@ -103,6 +103,7 @@
   <script>
     const GETFORM_ENDPOINT = 'https://getform.io/f/bdrddlgb';
 
+    // App State in localStorage (text) and photo dataURLs
     const SKEY = 'frz_state_v1';
     const OUTBOX = 'frz_outbox_v1';
     const state = loadState();
@@ -122,8 +123,10 @@
 
     function show(id){ Object.values(screens).forEach(s=>s.classList.remove('active')); screens[id].classList.add('active'); updatePendingInfo(); }
 
+    // Elements
     const el = (id)=>document.getElementById(id);
 
+    // HOME
     const btnGoInicio = el('btnGoInicio');
     btnGoInicio.onclick = ()=>{ 
       state.ciclo.startedAt = Date.now(); 
@@ -137,6 +140,7 @@
       if(out.length){
         box.style.display='block';
         box.innerHTML = `Há <b>${out.length}</b> envio(s) pendente(s). <button class="btn" style="margin-top:8px;" onclick="resendOutbox()">Enviar agora</button>`;
+        // Block starting a new cycle until previous submission is sent
         btnGoInicio.disabled = true;
       } else {
         box.style.display='none';
@@ -144,38 +148,10 @@
       }
     }
 
-    function isInicioValid() {
-      return (
-        (state.inicio.manifesto || '').trim() &&
-        (state.inicio.placa || '').trim() &&
-        (state.inicio.qtdEntregas || '').toString().trim() &&
-        (state.inicio.qtdCidades || '').toString().trim() &&
-        (state.inicio.cidadesDistantes || '').trim() &&
-        (state.inicio.kmInicial || '').toString().trim() &&
-        state.inicio.fotoDataUrl
-      );
-    }
-
-    function isFimValid() {
-      return (
-        (state.fim.qtdDevolucoes || '').toString().trim() &&
-        (state.fim.kmFinal || '').toString().trim() &&
-        state.fim.fotoDataUrl
-      );
-    }
-
-    function updateInicioButton() {
-      el('btnEnviarInicio').disabled = !isInicioValid();
-    }
-
-    function updateFimButton() {
-      el('btnFinalEnviar').disabled = !isFimValid();
-    }
-
+    // INÍCIO handlers
     const inicioFields = ['manifesto','placa','qtdEntregas','qtdCidades','cidadesDistantes','kmInicial'];
     inicioFields.forEach(k=>{
-      const input = el(k); input.value = state.inicio[k] || '';
-      input.addEventListener('input', ()=>{ state.inicio[k] = input.value; saveState(); updateInicioButton(); });
+      const input = el(k); input.value = state.inicio[k] || ''; input.addEventListener('input', ()=>{ state.inicio[k] = input.value; saveState(); });
     });
 
     el('fotoInicio').addEventListener('change', async (e)=>{
@@ -184,17 +160,17 @@
       state.inicio.fotoDataUrl = dataUrl; saveState();
       el('thumbInicio').src = dataUrl; el('thumbInicio').style.display='block';
       await captureGeo('inicio');
-      updateInicioButton();
     });
 
     el('btnEnviarInicio').onclick = ()=>{ show('middle'); };
 
+    // MIDDLE
     el('btnGoFim').onclick = ()=>{ show('fim'); };
 
+    // FIM handlers
     const fimFields = ['qtdDevolucoes','kmFinal'];
     fimFields.forEach(k=>{
-      const input = el(k); input.value = state.fim[k] || '';
-      input.addEventListener('input', ()=>{ state.fim[k] = input.value; saveState(); updateFimButton(); });
+      const input = el(k); input.value = state.fim[k] || ''; input.addEventListener('input', ()=>{ state.fim[k] = input.value; saveState(); });
     });
 
     el('fotoFim').addEventListener('change', async (e)=>{
@@ -203,11 +179,11 @@
       state.fim.fotoDataUrl = dataUrl; saveState();
       el('thumbFim').src = dataUrl; el('thumbFim').style.display='block';
       await captureGeo('fim');
-      updateFimButton();
     });
 
     el('btnFinalEnviar').onclick = ()=>{ submitCycle(); };
 
+    // Utilities
     async function captureGeo(section){
       const geoEl = section==='inicio'? el('geoInicio') : el('geoFim');
       geoEl.textContent = 'Obtendo localização…';
@@ -271,6 +247,7 @@
     }
 
     async function submitCycle(){
+      // Prepare payload
       const payload = {
         manifesto: (state.inicio.manifesto||'').trim(),
         placa: (state.inicio.placa||'').trim(),
@@ -297,22 +274,26 @@
         form.append('fotoFim', dataURLToBlob(state.fim.fotoDataUrl), `odometro_fim_${Date.now()}.jpg`);
       }
 
+      // Try immediate send; if fails, queue and block new cycles
       try {
         if(!GETFORM_ENDPOINT || GETFORM_ENDPOINT.startsWith('REPLACE_ME')) throw new Error('Endpoint não configurado');
         const res = await fetch(GETFORM_ENDPOINT, { method: 'POST', body: form });
         if(!res.ok) throw new Error('Falha no envio');
+        // Success → clear cycle state
         state.inicio = {}; state.fim = {}; state.ciclo = {}; saveState();
         alert('Enviado com sucesso! Você voltará à tela inicial.');
         show('home');
         updatePendingInfo();
       } catch (err) {
+        // Queue in outbox and **block** starting a new cycle
         const out = JSON.parse(localStorage.getItem(OUTBOX) || '[]');
         out.push({ payload, inicioFoto: state.inicio.fotoDataUrl||null, fimFoto: state.fim.fotoDataUrl||null });
         localStorage.setItem(OUTBOX, JSON.stringify(out));
+        // Keep local state so user can’t start a new cycle until resend
         state.inicio = {}; state.fim = {}; state.ciclo = {}; saveState();
         alert('Sem conexão ou servidor indisponível. Seus dados foram guardados no aparelho. No início, toque em "Enviar agora" quando tiver internet.');
         show('home');
-        updatePendingInfo();
+        updatePendingInfo(); // this disables the Início button until sent
       }
     }
 
@@ -329,7 +310,7 @@
         try {
           const res = await fetch(GETFORM_ENDPOINT, { method:'POST', body: form });
           if(!res.ok) throw new Error('fail');
-          out.splice(i,1); i--;
+          out.splice(i,1); i--; // remove and step back
           localStorage.setItem(OUTBOX, JSON.stringify(out));
         } catch(e){ break; }
       }
@@ -337,14 +318,14 @@
       if(!JSON.parse(localStorage.getItem(OUTBOX)||'[]').length) alert('Todos os envios pendentes foram concluídos.');
     }
 
+    // Restore previews if any
     window.addEventListener('load', ()=>{
       if(state.inicio.fotoDataUrl){ el('thumbInicio').src = state.inicio.fotoDataUrl; el('thumbInicio').style.display='block'; }
       if(state.fim.fotoDataUrl){ el('thumbFim').src = state.fim.fotoDataUrl; el('thumbFim').style.display='block'; }
       if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js'); }
       updatePendingInfo();
-      updateInicioButton();
-      updateFimButton();
     });
   </script>
+  <script src="./validation.js"></script>
 </body>
 </html>
