@@ -148,6 +148,35 @@
       }
     }
 
+    // --- VALIDATION ---
+    function isInicioValid() {
+      return (
+        (state.inicio.manifesto || '').trim() &&
+        (state.inicio.placa || '').trim() &&
+        (state.inicio.qtdEntregas || '').toString().trim() &&
+        (state.inicio.qtdCidades || '').toString().trim() &&
+        (state.inicio.cidadesDistantes || '').trim() &&
+        (state.inicio.kmInicial || '').toString().trim() &&
+        state.inicio.fotoDataUrl
+      );
+    }
+
+    function isFimValid() {
+      return (
+        (state.fim.qtdDevolucoes || '').toString().trim() &&
+        (state.fim.kmFinal || '').toString().trim() &&
+        state.fim.fotoDataUrl
+      );
+    }
+
+    function updateInicioButton() {
+      el('btnEnviarInicio').disabled = !isInicioValid();
+    }
+
+    function updateFimButton() {
+      el('btnFinalEnviar').disabled = !isFimValid();
+    }
+
     // INÍCIO handlers
     const inicioFields = ['manifesto','placa','qtdEntregas','qtdCidades','cidadesDistantes','kmInicial'];
     inicioFields.forEach(k=>{
