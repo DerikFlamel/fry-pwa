@@ -152,13 +152,18 @@
       const input = el(k); input.value = state.inicio[k] || ''; input.addEventListener('input', ()=>{ state.inicio[k] = input.value; saveState(); });
     });
 
-    el('fotoInicio').addEventListener('change', async (e)=>{
-      const file = e.target.files[0]; if(!file) return;
-      const dataUrl = await compressImageToDataURL(file, 0.8, 1600);
-      state.inicio.fotoDataUrl = dataUrl; saveState();
-      el('thumbInicio').src = dataUrl; el('thumbInicio').style.display='block';
-      await captureGeo('inicio');
-    });
+   // INÍCIO photo capture
+el('fotoInicio').addEventListener('click', async ()=>{
+  // Request location early (this triggers iOS location permission!)
+  await captureGeo('inicio');
+});
+
+el('fotoInicio').addEventListener('change', async (e)=>{
+  const file = e.target.files[0]; if(!file) return;
+  const dataUrl = await compressImageToDataURL(file, 0.8, 1600);
+  state.inicio.fotoDataUrl = dataUrl; saveState();
+  el('thumbInicio').src = dataUrl; el('thumbInicio').style.display='block';
+});
 
     el('btnEnviarInicio').onclick = ()=>{ show('middle'); };
 
@@ -171,13 +176,17 @@
       const input = el(k); input.value = state.fim[k] || ''; input.addEventListener('input', ()=>{ state.fim[k] = input.value; saveState(); });
     });
 
-    el('fotoFim').addEventListener('change', async (e)=>{
-      const file = e.target.files[0]; if(!file) return;
-      const dataUrl = await compressImageToDataURL(file, 0.8, 1600);
-      state.fim.fotoDataUrl = dataUrl; saveState();
-      el('thumbFim').src = dataUrl; el('thumbFim').style.display='block';
-      await captureGeo('fim');
-    });
+// FIM photo capture
+el('fotoFim').addEventListener('click', async ()=>{
+  await captureGeo('fim');
+});
+
+el('fotoFim').addEventListener('change', async (e)=>{
+  const file = e.target.files[0]; if(!file) return;
+  const dataUrl = await compressImageToDataURL(file, 0.8, 1600);
+  state.fim.fotoDataUrl = dataUrl; saveState();
+  el('thumbFim').src = dataUrl; el('thumbFim').style.display='block';
+});
 
     el('btnFinalEnviar').onclick = ()=>{ submitCycle(); };
 
