@@ -11,7 +11,7 @@
   <meta http-equiv="Expires" content="0" />
 
   <title>FRZ</title>
- <link rel="manifest" href="./manifest.webmanifest?v=13" />
+ <link rel="manifest" href="./manifest.webmanifest?v=14" />
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='512' height='512'%3E%3Crect width='512' height='512' fill='%23FF7A00'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-size='220' font-family='Arial' font-weight='700' fill='black'%3EFRZ%3C/text%3E%3C/svg%3E" />
   <style>
     :root { --orange: #FF7A00; --black: #000000; --darkgray:#666666; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
@@ -70,7 +70,7 @@
         <div id="geoInicio" class="geo"></div>
       </div>
       <div class="spacer"></div>
-      <button id="btnEnviarInicio" class="btn">Enviar</button>
+      <button id="btnEnviarInicio" class="btn" disabled>Enviar</button>
     </div>
     <div class="footer">KIT 0.01.010</div>
   </div>
@@ -99,7 +99,7 @@
         <div id="geoFim" class="geo"></div>
       </div>
       <div class="spacer"></div>
-      <button id="btnFinalEnviar" class="btn">Enviar</button>
+      <button id="btnFinalEnviar" class="btn" disabled>Enviar</button>
     </div>
     <div class="footer">KIT 0.01.010</div>
   </div>
@@ -214,6 +214,8 @@ el('fotoFim').addEventListener('change', async (e)=>{
       const label = rev ? `Cidade: ${rev.city||rev.town||rev.village||'—'} · UF: ${rev.state_code||rev.state||'—'} · CEP: ${rev.postcode||'—'} · Lat: ${coords.lat} · Lon: ${coords.lon}` : `Lat: ${coords.lat} · Lon: ${coords.lon} · Precisão ±${coords.acc}m`;
       geoEl.innerHTML = label;
       state[section].geo = { ...coords, ...(rev||{}) }; saveState();
+        if (section === 'inicio') validateInicio();
+        if (section === 'fim') validateFim();
     }
 
     function getCurrentPosition(){
