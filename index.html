@@ -70,7 +70,7 @@
         <div id="geoInicio" class="geo"></div>
       </div>
       <div class="spacer"></div>
-      <button id="btnEnviarInicio" class="btn">Enviar</button>
+      <button id="btnEnviarInicio" class="btn" disabled>Enviar</button>
     </div>
     <div class="footer">KIT 0.01.010</div>
   </div>
@@ -99,7 +99,7 @@
         <div id="geoFim" class="geo"></div>
       </div>
       <div class="spacer"></div>
-      <button id="btnFinalEnviar" class="btn">Enviar</button>
+      <button id="btnFinalEnviar" class="btn" disabled>Enviar</button>
     </div>
     <div class="footer">KIT 0.01.010</div>
   </div>
@@ -168,7 +168,15 @@ el('fotoInicio').addEventListener('change', async (e)=>{
   state.inicio.fotoDataUrl = dataUrl; saveState();
   el('thumbInicio').src = dataUrl; el('thumbInicio').style.display='block';
 });
-
+function validateInicio() {
+  const allFilled = inicioFields.every(k => el(k).value.trim() !== '');
+  const hasPhoto = !!state.inicio.fotoDataUrl;
+  const hasGeo = !!state.inicio.geo;
+    el('btnEnviarInicio').disabled = !(allFilled && hasPhoto && hasGeo);
+}
+// Run validation whenever user types, takes photo or location updates
+inicioFields.forEach(k => el(k).addEventListener('input', validateInicio));
+    el('fotoInicio').addEventListener('change', validateInicio);
     el('btnEnviarInicio').onclick = ()=>{ show('middle'); };
 
     // MIDDLE
@@ -191,6 +199,16 @@ el('fotoFim').addEventListener('change', async (e)=>{
   state.fim.fotoDataUrl = dataUrl; saveState();
   el('thumbFim').src = dataUrl; el('thumbFim').style.display='block';
 });
+function validateFim() {
+  const requiredFim = ['qtdDevolucoes', 'kmFinal'];
+  const allFilled = requiredFim.every(k => el(k).value.trim() !== '');
+  const hasPhoto = !!state.fim.fotoDataUrl;
+  const hasGeo = !!state.fim.geo;
+  el('btnFinalEnviar').disabled = !(allFilled && hasPhoto && hasGeo);
+}
+
+['qtdDevolucoes','kmFinal'].forEach(k => el(k).addEventListener('input', validateFim));
+el('fotoFim').addEventListener('change', validateFim);
 
     el('btnFinalEnviar').onclick = ()=>{ submitCycle(); };
 
